@@ -4,25 +4,27 @@ use nom::{
     character::complete::{alphanumeric1, char, multispace1},
     combinator::{all_consuming, map, value},
     multi::many0,
-    sequence::{delimited, pair, tuple},
+    sequence::{pair, preceded, terminated, tuple},
     IResult,
 };
 
 pub type Program = Vec<Def>;
 
+#[derive(Debug, Clone)]
 pub struct Def {
     pub name: String,
     pub params: Vec<String>,
     pub term: Term,
 }
 
+#[derive(Debug, Clone)]
 pub enum Term {
     Var(String),
     App(Vec<Term>),
 }
 
 pub fn parse_program(text: &str) -> Result<Program, String> {
-    let program = all_consuming(many0(delimited(junk, parse_def, junk)))(text);
+    let program = all_consuming(terminated(many0(preceded(junk, parse_def)), junk))(text);
     match program {
         Ok((_, program)) => Ok(program),
         Err(e) => Err(e.to_string()),
@@ -40,8 +42,7 @@ fn parse_def(text: &str) -> IResult<&str, Def> {
 
 fn parse_params(text: &str) -> IResult<&str, Vec<String>> {
     let (text, _) = char('(')(text)?;
-    let (text, _) = junk(text)?;
-    let (text, params) = many0(parse_var)(text)?;
+    let (text, params) = many0(preceded(junk, parse_var))(text)?;
     let (text, _) = junk(text)?;
     let (text, _) = char(')')(text)?;
     Ok((text, params))
@@ -53,8 +54,7 @@ fn parse_term(text: &str) -> IResult<&str, Term> {
 
 fn parse_app(text: &str) -> IResult<&str, Vec<Term>> {
     let (text, _) = char('(')(text)?;
-    let (text, _) = junk(text)?;
-    let (text, terms) = many0(parse_term)(text)?;
+    let (text, terms) = many0(preceded(junk, parse_term))(text)?;
     let (text, _) = junk(text)?;
     let (text, _) = char(')')(text)?;
     Ok((text, terms))
@@ -96,7 +96,7 @@ fn show_def(def: &Def) -> String {
     )
 }
 
-fn show_term(term: &Term) -> String {
+pub fn show_term(term: &Term) -> String {
     match term {
         Term::Var(var) => var.clone(),
         Term::App(terms) => format!(

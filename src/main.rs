@@ -1,4 +1,4 @@
-use equation::{parse_program, show_program, Cli};
+use equation::{compile, parse_program, show_program, show_state, Cli};
 
 use clap::Parser;
 use std::fs;
@@ -17,12 +17,15 @@ fn main() {
 
     println!("text:\n{}\n", text);
 
-    let parsed = match parse_program(&text) {
+    let program = match parse_program(&text) {
         Ok(program) => program,
         Err(e) => {
             println!("parse error: {}", e);
             return;
         }
     };
-    println!("parsed:\n{}", show_program(&parsed));
+    println!("parsed:\n{}\n", show_program(&program));
+
+    let state = compile(&program);
+    println!("state:\n{}", show_state(&state));
 }
