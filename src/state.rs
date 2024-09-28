@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 use crate::{show_term, Def, Program, Term};
 
@@ -6,8 +6,10 @@ use crate::{show_term, Def, Program, Term};
 pub struct State {
     names: Vec<String>,
     procs: Vec<Procedure>,
-    stack: Stack,
+    body: Stack,
+    arg_ranges: Vec<Range<usize>>,
     args: Stack,
+    stack: Stack,
 }
 
 #[derive(Debug, Clone)]
@@ -48,13 +50,13 @@ pub fn compile(program: &Program) -> State {
         .map(|proc| proc.body)
         .unwrap_or(vec![]);
 
-    let args = vec![];
-
     State {
         names,
         procs,
+        body: vec![],
+        arg_ranges: vec![],
+        args: vec![],
         stack,
-        args,
     }
 }
 
@@ -99,7 +101,58 @@ fn compile_term(
 }
 
 pub fn eval(mut state: State) -> State {
+    while let Some(()) = eval_step(&mut state) {}
     state
+}
+
+fn eval_step(state: &mut State) -> Option<()> {
+    println!("{}", show_state(state));
+
+    let Some(Op::Def(i)) = state.stack.pop() else {
+        return None;
+    };
+
+    let Procedure { arity, body } = &state.procs[i];
+
+    state.args.clear();
+    state.arg_ranges.clear();
+    for _ in 0..*arity {
+        get_arg(&mut state.stack, &mut state.args, &mut state.arg_ranges)?;
+    }
+
+    state.body.clear();
+    state.body.extend_from_slice(body);
+    for op in &state.body {
+        match *op {
+            Op::Arg(i) => {
+                let arg_range = state.arg_ranges[i].clone();
+                let arg = &state.args[arg_range];
+                state.stack.extend_from_slice(arg);
+            }
+            op => state.stack.push(op),
+        }
+    }
+
+    Some(())
+}
+
+fn get_arg(stack: &mut Stack, args: &mut Stack, arg_ranges: &mut Vec<Range<usize>>) -> Option<()> {
+    let mut apps_needed = 0;
+    let arg_length = stack.iter().rev().position(|op| {
+        match op {
+            Op::App => apps_needed -= 1,
+            _ => apps_needed += 1,
+        }
+        apps_needed <= 0
+    })?;
+
+    let index = stack.len() - arg_length;
+    let arg_start = args.len();
+    let arg_end = arg_start + arg_length;
+    args.extend(stack.drain(index..));
+    arg_ranges.push(arg_start..arg_end);
+    let _app = stack.pop();
+    Some(())
 }
 
 pub fn show_state(state: &State) -> String {

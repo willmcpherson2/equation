@@ -27,8 +27,8 @@ fn main() {
     println!("parsed:\n{}\n", show_program(&program));
 
     let state = compile(&program);
-    println!("state:\n{}\n", show_state(&state));
 
+    println!("eval:");
     let state = eval(state);
-    println!("state:\n{}", show_state(&state));
+    println!("{}", show_state(&state));
 }
