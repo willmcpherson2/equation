@@ -4,11 +4,16 @@ use crate::{show_term, Def, Program, Term};
 
 #[derive(Debug, Clone)]
 pub struct State {
-    def_names: Vec<String>,
-    def_arities: Vec<usize>,
-    def_stacks: Vec<Stack>,
-    main_stack: Stack,
-    arg_stack: Stack,
+    names: Vec<String>,
+    procs: Vec<Procedure>,
+    stack: Stack,
+    args: Stack,
+}
+
+#[derive(Debug, Clone)]
+pub struct Procedure {
+    arity: usize,
+    body: Stack,
 }
 
 pub type Stack = Vec<Op>;
@@ -21,34 +26,35 @@ pub enum Op {
 }
 
 pub fn compile(program: &Program) -> State {
-    let def_names = program.iter().map(|def| def.name.clone()).collect();
-
-    let def_arities = program.iter().map(|def| def.params.len()).collect();
+    let names = program.iter().map(|def| def.name.clone()).collect();
 
     let def_indices: HashMap<String, usize> = program
         .iter()
         .enumerate()
         .map(|(i, def)| (def.name.clone(), i))
         .collect();
-    let def_stacks: Vec<Stack> = program
+    let procs: Vec<Procedure> = program
         .iter()
-        .map(|def| compile_def(def, &def_indices))
+        .map(|def| Procedure {
+            arity: def.params.len(),
+            body: compile_def(def, &def_indices),
+        })
         .collect();
 
-    let main_stack = program
+    let stack = program
         .iter()
         .position(|def| def.name == "Main")
-        .and_then(|index| def_stacks.get(index).cloned())
+        .and_then(|index| procs.get(index).cloned())
+        .map(|proc| proc.body)
         .unwrap_or(vec![]);
 
-    let arg_stack = vec![];
+    let args = vec![];
 
     State {
-        def_names,
-        def_arities,
-        def_stacks,
-        main_stack,
-        arg_stack,
+        names,
+        procs,
+        stack,
+        args,
     }
 }
 
@@ -92,15 +98,14 @@ fn compile_term(
     }
 }
 
-pub fn eval(state: &mut State) {}
+pub fn eval(mut state: State) -> State {
+    state
+}
 
 pub fn show_state(state: &State) -> String {
-    show_stack(
-        &state.def_names,
-        &mut state.main_stack.iter().copied().rev(),
-    )
-    .map(|term| show_term(&term))
-    .unwrap_or("".to_string())
+    show_stack(&state.names, &mut state.stack.iter().copied().rev())
+        .map(|term| show_term(&term))
+        .unwrap_or("".to_string())
 }
 
 pub fn show_stack<I>(names: &[String], stack: &mut I) -> Option<Term>
