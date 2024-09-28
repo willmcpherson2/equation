@@ -3,9 +3,10 @@ use nom::{
     bytes::complete::{tag, take_until, take_while},
     character::complete::{alphanumeric1, char, multispace1},
     combinator::{all_consuming, map, value},
+    error::{Error, ErrorKind},
     multi::many0,
     sequence::{pair, preceded, terminated, tuple},
-    IResult,
+    Err, IResult,
 };
 
 pub type Program = Vec<Def>;
@@ -55,6 +56,9 @@ fn parse_term(text: &str) -> IResult<&str, Term> {
 fn parse_app(text: &str) -> IResult<&str, Vec<Term>> {
     let (text, _) = char('(')(text)?;
     let (text, terms) = many0(preceded(junk, parse_term))(text)?;
+    if terms.len() < 2 {
+        return Err(Err::Error(Error::new(text, ErrorKind::Fail)));
+    }
     let (text, _) = junk(text)?;
     let (text, _) = char(')')(text)?;
     Ok((text, terms))
