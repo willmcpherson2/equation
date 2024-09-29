@@ -17,17 +17,16 @@ fn main() {
 
     println!("text:\n{}\n", text);
 
-    let program = match parse_program(&text) {
-        Ok(program) => program,
+    let prog = match parse_program(&text) {
+        Ok(prog) => prog,
         Err(e) => {
             println!("parse error: {}", e);
             return;
         }
     };
-    println!("parsed:\n{}\n", show_program(&program));
+    println!("parsed:\n{}\n", show_program(&prog));
 
-    let state = compile(&program);
-
+    let state = compile(&prog);
     println!("eval:");
     let state = eval(state);
     println!("{}", show_state(&state));

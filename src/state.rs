@@ -6,9 +6,9 @@ use crate::{show_term, Def, Program, Term};
 pub struct State {
     names: Vec<String>,
     procs: Vec<Procedure>,
-    arg_ranges: Vec<Range<usize>>,
-    args: Stack,
     stack: Stack,
+    args: Stack,
+    arg_ranges: Vec<Range<usize>>,
 }
 
 #[derive(Debug, Clone)]
@@ -26,15 +26,15 @@ pub enum Op {
     Arg(usize),
 }
 
-pub fn compile(program: &Program) -> State {
-    let names = program.iter().map(|def| def.name.clone()).collect();
+pub fn compile(prog: &Program) -> State {
+    let names = prog.iter().map(|def| def.name.clone()).collect();
 
-    let def_indices: HashMap<String, usize> = program
+    let def_indices: HashMap<String, usize> = prog
         .iter()
         .enumerate()
         .map(|(i, def)| (def.name.clone(), i))
         .collect();
-    let procs: Vec<Procedure> = program
+    let procs: Vec<Procedure> = prog
         .iter()
         .map(|def| Procedure {
             arity: def.params.len(),
@@ -42,7 +42,7 @@ pub fn compile(program: &Program) -> State {
         })
         .collect();
 
-    let stack = program
+    let stack = prog
         .iter()
         .position(|def| def.name == "Main")
         .and_then(|index| procs.get(index).cloned())
@@ -52,9 +52,9 @@ pub fn compile(program: &Program) -> State {
     State {
         names,
         procs,
-        arg_ranges: vec![],
-        args: vec![],
         stack,
+        args: vec![],
+        arg_ranges: vec![],
     }
 }
 

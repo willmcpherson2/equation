@@ -24,48 +24,48 @@ pub enum Term {
     App(Vec<Term>),
 }
 
-pub fn parse_program(text: &str) -> Result<Program, String> {
-    let program = all_consuming(terminated(many0(preceded(junk, parse_def)), junk))(text);
-    match program {
-        Ok((_, program)) => Ok(program),
+pub fn parse_program(input: &str) -> Result<Program, String> {
+    let prog = all_consuming(terminated(many0(preceded(junk, parse_def)), junk))(input);
+    match prog {
+        Ok((_, prog)) => Ok(prog),
         Err(e) => Err(e.to_string()),
     }
 }
 
-fn parse_def(text: &str) -> IResult<&str, Def> {
-    let (text, name) = parse_var(text)?;
-    let (text, _) = junk(text)?;
-    let (text, params) = parse_params(text)?;
-    let (text, _) = junk(text)?;
-    let (text, term) = parse_term(text)?;
-    Ok((text, Def { name, params, term }))
+fn parse_def(input: &str) -> IResult<&str, Def> {
+    let (input, name) = parse_var(input)?;
+    let (input, _) = junk(input)?;
+    let (input, params) = parse_params(input)?;
+    let (input, _) = junk(input)?;
+    let (input, term) = parse_term(input)?;
+    Ok((input, Def { name, params, term }))
 }
 
-fn parse_params(text: &str) -> IResult<&str, Vec<String>> {
-    let (text, _) = char('(')(text)?;
-    let (text, params) = many0(preceded(junk, parse_var))(text)?;
-    let (text, _) = junk(text)?;
-    let (text, _) = char(')')(text)?;
-    Ok((text, params))
+fn parse_params(input: &str) -> IResult<&str, Vec<String>> {
+    let (input, _) = char('(')(input)?;
+    let (input, params) = many0(preceded(junk, parse_var))(input)?;
+    let (input, _) = junk(input)?;
+    let (input, _) = char(')')(input)?;
+    Ok((input, params))
 }
 
-fn parse_term(text: &str) -> IResult<&str, Term> {
-    alt((map(parse_app, Term::App), map(parse_var, Term::Var)))(text)
+fn parse_term(input: &str) -> IResult<&str, Term> {
+    alt((map(parse_app, Term::App), map(parse_var, Term::Var)))(input)
 }
 
-fn parse_app(text: &str) -> IResult<&str, Vec<Term>> {
-    let (text, _) = char('(')(text)?;
-    let (text, terms) = many0(preceded(junk, parse_term))(text)?;
+fn parse_app(input: &str) -> IResult<&str, Vec<Term>> {
+    let (input, _) = char('(')(input)?;
+    let (input, terms) = many0(preceded(junk, parse_term))(input)?;
     if terms.len() < 2 {
-        return Err(Err::Error(Error::new(text, ErrorKind::Fail)));
+        return Err(Err::Error(Error::new(input, ErrorKind::Fail)));
     }
-    let (text, _) = junk(text)?;
-    let (text, _) = char(')')(text)?;
-    Ok((text, terms))
+    let (input, _) = junk(input)?;
+    let (input, _) = char(')')(input)?;
+    Ok((input, terms))
 }
 
-fn parse_var(text: &str) -> IResult<&str, String> {
-    map(alphanumeric1, String::from)(text)
+fn parse_var(input: &str) -> IResult<&str, String> {
+    map(alphanumeric1, String::from)(input)
 }
 
 fn junk(input: &str) -> IResult<&str, ()> {
@@ -87,8 +87,8 @@ fn multi_line_comment(input: &str) -> IResult<&str, ()> {
     value((), tuple((tag("/*"), take_until("*/"), tag("*/"))))(input)
 }
 
-pub fn show_program(program: &Program) -> String {
-    program.iter().map(show_def).collect::<Vec<_>>().join("\n")
+pub fn show_program(prog: &Program) -> String {
+    prog.iter().map(show_def).collect::<Vec<_>>().join("\n")
 }
 
 fn show_def(def: &Def) -> String {
