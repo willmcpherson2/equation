@@ -26,59 +26,63 @@ pub enum Op {
     Arg(usize),
 }
 
-pub fn compile(prog: &Program) -> State {
+pub fn compile(prog: &Program) -> Result<State, String> {
     let names = prog.iter().map(|def| def.name.clone()).collect();
 
-    let def_indices: HashMap<String, usize> = prog
+    let def_indices = prog
         .iter()
         .enumerate()
         .map(|(i, def)| (def.name.clone(), i))
-        .collect();
-    let procs: Vec<Procedure> = prog
+        .collect::<HashMap<String, usize>>();
+    let procs = prog
         .iter()
-        .map(|def| Procedure {
-            arity: def.params.len(),
-            body: compile_def(def, &def_indices),
+        .map(|def| {
+            Ok(Procedure {
+                arity: def.params.len(),
+                body: compile_def(def, &def_indices)?,
+            })
         })
-        .collect();
+        .collect::<Result<Vec<Procedure>, String>>()?;
 
     let stack = prog
         .iter()
         .position(|def| def.name == "Main")
         .and_then(|index| procs.get(index).cloned())
         .map(|proc| proc.body)
-        .unwrap_or(vec![]);
+        .ok_or_else(|| "no Main function defined".to_string())?;
 
-    State {
+    Ok(State {
         names,
         procs,
         stack,
         args: vec![],
         arg_ranges: vec![],
-    }
+    })
 }
 
-fn compile_def(def: &Def, def_indices: &HashMap<String, usize>) -> Stack {
+fn compile_def(def: &Def, def_indices: &HashMap<String, usize>) -> Result<Stack, String> {
     let param_indices: HashMap<String, usize> = def
         .params
         .iter()
         .enumerate()
         .map(|(i, param)| (param.clone(), i))
         .collect();
-    let mut stack = compile_term(&def.term, def_indices, &param_indices);
+    let mut stack = compile_term(&def.term, def_indices, &param_indices)?;
     stack.reverse();
-    stack
+    Ok(stack)
 }
 
 fn compile_term(
     term: &Term,
     def_indices: &HashMap<String, usize>,
     param_indices: &HashMap<String, usize>,
-) -> Stack {
+) -> Result<Stack, String> {
     match term {
-        Term::App(terms) => terms
+        Term::App(terms) => Ok(terms
             .iter()
             .map(|term| compile_term(term, def_indices, param_indices))
+            .collect::<Result<Vec<Stack>, String>>()?
+            .into_iter()
             .enumerate()
             .flat_map(|(i, mut stack)| {
                 if i != 0 {
@@ -86,14 +90,14 @@ fn compile_term(
                 }
                 stack
             })
-            .collect::<Vec<_>>(),
+            .collect::<Vec<_>>()),
         Term::Var(var) => {
             let def = def_indices.get(var).cloned().map(Op::Def);
             let arg = || param_indices.get(var).cloned().map(Op::Arg);
             let op = def
                 .or_else(arg)
-                .unwrap_or_else(|| panic!("undefined variable: {}", var.clone()));
-            vec![op]
+                .ok_or_else(|| format!("undefined variable: {}", var.clone()))?;
+            Ok(vec![op])
         }
     }
 }

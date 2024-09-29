@@ -26,7 +26,13 @@ fn main() {
     };
     println!("parsed:\n{}\n", show_program(&prog));
 
-    let state = compile(&prog);
+    let state = match compile(&prog) {
+        Ok(state) => state,
+        Err(e) => {
+            println!("compile error: {}", e);
+            return;
+        }
+    };
     println!("eval:");
     let state = eval(state);
     println!("{}", show_state(&state));
