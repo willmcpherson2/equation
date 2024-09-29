@@ -6,7 +6,6 @@ use crate::{show_term, Def, Program, Term};
 pub struct State {
     names: Vec<String>,
     procs: Vec<Procedure>,
-    body: Stack,
     arg_ranges: Vec<Range<usize>>,
     args: Stack,
     stack: Stack,
@@ -53,7 +52,6 @@ pub fn compile(program: &Program) -> State {
     State {
         names,
         procs,
-        body: vec![],
         arg_ranges: vec![],
         args: vec![],
         stack,
@@ -120,9 +118,7 @@ fn eval_step(state: &mut State) -> Option<()> {
         get_arg(&mut state.stack, &mut state.args, &mut state.arg_ranges)?;
     }
 
-    state.body.clear();
-    state.body.extend_from_slice(body);
-    for op in &state.body {
+    for op in body {
         match *op {
             Op::Arg(i) => {
                 let arg_range = state.arg_ranges[i].clone();
