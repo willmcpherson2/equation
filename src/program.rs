@@ -25,7 +25,7 @@ pub enum Term {
 }
 
 pub fn parse_program(input: &str) -> Result<Program, String> {
-    let prog = all_consuming(terminated(many0(preceded(junk, parse_def)), junk))(input);
+    let prog = all_consuming(preceded(junk, many0(terminated(parse_def, junk))))(input);
     match prog {
         Ok((_, prog)) => Ok(prog),
         Err(e) => Err(e.to_string()),
@@ -33,38 +33,48 @@ pub fn parse_program(input: &str) -> Result<Program, String> {
 }
 
 fn parse_def(input: &str) -> IResult<&str, Def> {
-    let (input, name) = parse_var(input)?;
+    let (input, name) = parse_string(input)?;
     let (input, _) = junk(input)?;
-    let (input, params) = parse_params(input)?;
+    let (input, params) = many0(terminated(parse_string, junk))(input)?;
+    let (input, _) = junk(input)?;
+    let (input, _) = char('=')(input)?;
     let (input, _) = junk(input)?;
     let (input, term) = parse_term(input)?;
+    let (input, _) = junk(input)?;
+    let (input, _) = char(';')(input)?;
     Ok((input, Def { name, params, term }))
 }
 
-fn parse_params(input: &str) -> IResult<&str, Vec<String>> {
-    let (input, _) = char('(')(input)?;
-    let (input, params) = many0(preceded(junk, parse_var))(input)?;
-    let (input, _) = junk(input)?;
-    let (input, _) = char(')')(input)?;
-    Ok((input, params))
-}
-
 fn parse_term(input: &str) -> IResult<&str, Term> {
-    alt((map(parse_app, Term::App), map(parse_var, Term::Var)))(input)
+    alt((parse_app, parse_atom))(input)
 }
 
-fn parse_app(input: &str) -> IResult<&str, Vec<Term>> {
-    let (input, _) = char('(')(input)?;
-    let (input, terms) = many0(preceded(junk, parse_term))(input)?;
+fn parse_app(input: &str) -> IResult<&str, Term> {
+    let (input, terms) = many0(terminated(parse_atom, junk))(input)?;
     if terms.len() < 2 {
         return Err(Err::Error(Error::new(input, ErrorKind::Fail)));
     }
-    let (input, _) = junk(input)?;
-    let (input, _) = char(')')(input)?;
-    Ok((input, terms))
+    Ok((input, Term::App(terms)))
 }
 
-fn parse_var(input: &str) -> IResult<&str, String> {
+fn parse_atom(input: &str) -> IResult<&str, Term> {
+    alt((parse_parens, parse_var))(input)
+}
+
+fn parse_parens(input: &str) -> IResult<&str, Term> {
+    let (input, _) = char('(')(input)?;
+    let (input, _) = junk(input)?;
+    let (input, term) = parse_term(input)?;
+    let (input, _) = junk(input)?;
+    let (input, _) = char(')')(input)?;
+    Ok((input, term))
+}
+
+fn parse_var(input: &str) -> IResult<&str, Term> {
+    map(parse_string, Term::Var)(input)
+}
+
+fn parse_string(input: &str) -> IResult<&str, String> {
     map(alphanumeric1, String::from)(input)
 }
 
@@ -92,20 +102,29 @@ pub fn show_program(prog: &Program) -> String {
 }
 
 fn show_def(def: &Def) -> String {
-    format!(
-        "{} ({}) {}",
-        def.name,
-        def.params.join(" "),
-        show_term(&def.term)
-    )
+    if def.params.is_empty() {
+        format!("{} = {};", def.name, show_term(&def.term))
+    } else {
+        format!(
+            "{} {} = {};",
+            def.name,
+            def.params.join(" "),
+            show_term(&def.term)
+        )
+    }
 }
 
 pub fn show_term(term: &Term) -> String {
     match term {
         Term::Var(var) => var.clone(),
-        Term::App(terms) => format!(
-            "({})",
-            terms.iter().map(show_term).collect::<Vec<_>>().join(" ")
-        ),
+        Term::App(terms) => terms
+            .iter()
+            .enumerate()
+            .map(|(i, term)| match term {
+                Term::App(_) if i != 0 => format!("({})", show_term(term)),
+                _ => show_term(term),
+            })
+            .collect::<Vec<_>>()
+            .join(" "),
     }
 }
