@@ -1,29 +1,29 @@
-True x y = x;
-False x y = y;
+true x y = x;
+false x y = y;
 
-Not x = x False True;
-Or x y = x True y;
-And x y = x y False;
+not x = x false true;
+or x y = x true y;
+and x y = x y false;
 
-Cons x xs cons nil = cons x xs;
-Nil cons nil = nil;
+cons x xs c n = c x xs;
+nil c n = n;
 
-Append x xs = xs (AppendCons x) (AppendNil x);
-AppendCons x y ys = Cons y (Append x ys);
-AppendNil x = Cons x Nil;
+append x xs = xs (appendCons x) (appendNil x);
+appendCons x y ys = cons y (append x ys);
+appendNil x = cons x nil;
 
-Concat xs ys = xs (ConcatCons ys) (ConcatNil ys);
-ConcatCons ys x xs = Cons x (Concat xs ys);
-ConcatNil ys = ys;
+concat xs ys = xs (concatCons ys) (concatNil ys);
+concatCons ys x xs = cons x (concat xs ys);
+concatNil ys = ys;
 
-Map f xs = xs (MapCons f) (MapNil f);
-MapCons f x xs = Cons (f x) (Map f xs);
-MapNil f = Nil;
+map f xs = xs (mapCons f) (mapNil f);
+mapCons f x xs = cons (f x) (map f xs);
+mapNil f = nil;
 
-Fold f z xs = xs (FoldCons f z) (FoldNil z);
-FoldCons f z x xs = Fold f (f z x) xs;
-FoldNil z = z;
+fold f z xs = xs (foldCons f z) (foldNil z);
+foldCons f z x xs = fold f (f z x) xs;
+foldNil z = z;
 
-Loop = Loop;
+loop = loop;
 
-Main = Fold Or False (Cons True (Cons Loop Nil));
+main = fold or false (cons true (cons loop nil));

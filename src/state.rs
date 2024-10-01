@@ -46,10 +46,10 @@ pub fn compile(prog: &Program) -> Result<State, String> {
 
     let stack = prog
         .iter()
-        .position(|def| def.name == "Main")
+        .position(|def| def.name == "main")
         .and_then(|index| procs.get(index).cloned())
         .map(|proc| proc.body)
-        .ok_or_else(|| "no Main function defined".to_string())?;
+        .ok_or_else(|| "no main function defined".to_string())?;
 
     Ok(State {
         names,
