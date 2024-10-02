@@ -44,17 +44,15 @@ pub fn compile(prog: &Program) -> Result<State, String> {
         })
         .collect::<Result<Vec<Procedure>, String>>()?;
 
-    let stack = prog
+    let main = prog
         .iter()
         .position(|def| def.name == "main")
-        .and_then(|index| procs.get(index).cloned())
-        .map(|proc| proc.body)
         .ok_or_else(|| "no main function defined".to_string())?;
 
     Ok(State {
         names,
         procs,
-        stack,
+        stack: vec![Op::Def(main)],
         args: vec![],
         arg_ranges: vec![],
     })
