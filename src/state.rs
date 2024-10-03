@@ -4,17 +4,17 @@ use crate::{show_term, Def, Program, Term};
 
 #[derive(Debug, Clone)]
 pub struct State {
-    names: Vec<String>,
-    procs: Vec<Procedure>,
-    stack: Stack,
-    args: Stack,
-    arg_ranges: Vec<Range<usize>>,
+    pub names: Vec<String>,
+    pub procs: Vec<Procedure>,
+    pub stack: Stack,
+    pub args: Stack,
+    pub arg_ranges: Vec<Range<usize>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Procedure {
-    arity: usize,
-    body: Stack,
+    pub arity: usize,
+    pub body: Stack,
 }
 
 pub type Stack = Vec<Op>;
@@ -106,7 +106,7 @@ pub fn eval(mut state: State) -> State {
 }
 
 fn eval_step(state: &mut State) -> Option<()> {
-    println!("{}", show_state(state));
+    println!("{}", show_stack(&state.names, &state.stack));
 
     let Some(Op::Def(i)) = state.stack.pop() else {
         return None;
@@ -153,19 +153,19 @@ fn get_arg(stack: &mut Stack, args: &mut Stack, arg_ranges: &mut Vec<Range<usize
     Some(())
 }
 
-pub fn show_state(state: &State) -> String {
-    show_stack(&state.names, &mut state.stack.iter().copied().rev())
+pub fn show_stack(names: &[String], stack: &Stack) -> String {
+    show_stack_impl(names, &mut stack.iter().copied().rev())
         .map(|term| show_term(&term))
         .unwrap_or("".to_string())
 }
 
-pub fn show_stack<I>(names: &[String], stack: &mut I) -> Option<Term>
+fn show_stack_impl<I>(names: &[String], stack: &mut I) -> Option<Term>
 where
     I: Iterator<Item = Op>,
 {
     let l = show_op(names, stack.next()?)?;
     let mut terms = vec![l.clone()];
-    while let Some(term) = show_stack(names, stack) {
+    while let Some(term) = show_stack_impl(names, stack) {
         terms.push(term);
     }
     if terms.len() == 1 {

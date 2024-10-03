@@ -1,4 +1,4 @@
-use equation::{compile, eval, parse_program, show_program, show_state, Cli};
+use equation::{compile, eval, parse_program, show_program, show_stack, Cli};
 
 use clap::Parser;
 use std::fs;
@@ -35,5 +35,5 @@ fn main() {
     };
     println!("eval:");
     let state = eval(state);
-    println!("{}", show_state(&state));
+    println!("{}", show_stack(&state.names, &state.stack));
 }
