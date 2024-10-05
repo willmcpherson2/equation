@@ -53,7 +53,7 @@ pub fn compile(prog: &Program) -> Result<State, String> {
     stack.push(Op::Def(main));
 
     let args = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
-    let arg_ranges = Vec::with_capacity(bytes_to_capacity::<Op>(1_000));
+    let arg_ranges = Vec::with_capacity(bytes_to_capacity::<Range<usize>>(1_000));
 
     Ok(State {
         names,
@@ -65,9 +65,7 @@ pub fn compile(prog: &Program) -> Result<State, String> {
 }
 
 fn bytes_to_capacity<T>(bytes: usize) -> usize {
-    let element_size = std::mem::size_of::<T>();
-    let elements = bytes / element_size;
-    elements
+    bytes / std::mem::size_of::<T>()
 }
 
 fn compile_def(def: &Def, def_indices: &HashMap<String, usize>) -> Result<Stack, String> {
