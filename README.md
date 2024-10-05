@@ -92,6 +92,29 @@ To evaluate our program, we follow these steps:
 3. Fill the argument stacks based on the `arity` of the procedure
 4. Copy the `body` of the procedure onto the top of the stack, mapping `Arg(n)` to the corresponding argument
 
+### Memory allocation
+
+The evaluation steps don't require any allocations unless space runs out in one of the arrays. With preallocation, some programs won't allocate any memory after startup.
+
+### Data locality
+
+We only push/pop the top of stack (end of the array), so this is very cache-friendly.
+
+For the argument stacks, we are indexing the entire array, so it's not as good, but they are still arrays.
+
+Our 3 instructions, `Def(n)`, `Arg(n)` and `App`, can all be stored in 8 bits as long as the indices are less than 256. This would limit the number of top-level definitions to 256 and the number of arguments on a given function to 256. Alternatively, a variable-width encoding could be used, as there aren't any operations that require instructions to be a fixed width.
+
+### Example
+
+Let's evaluate this program:
+
+```
+true x y = x;
+false x y = y;
+not x = x false true;
+main = not true;
+```
+
 ```rust
 // stack: main
 stack: [Def(3)]
@@ -157,7 +180,3 @@ stack: []
 args: []
 arg_ranges: []
 ```
-
-### Memory allocation
-
-The evaluation steps don't require any allocations unless space runs out in one of the arrays. With preallocation, some programs won't allocate any memory after startup.
