@@ -49,13 +49,25 @@ pub fn compile(prog: &Program) -> Result<State, String> {
         .position(|def| def.name == "main")
         .ok_or_else(|| "no main function defined".to_string())?;
 
+    let mut stack = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
+    stack.push(Op::Def(main));
+
+    let args = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
+    let arg_ranges = Vec::with_capacity(bytes_to_capacity::<Op>(1_000));
+
     Ok(State {
         names,
         procs,
-        stack: vec![Op::Def(main)],
-        args: vec![],
-        arg_ranges: vec![],
+        stack,
+        args,
+        arg_ranges,
     })
+}
+
+fn bytes_to_capacity<T>(bytes: usize) -> usize {
+    let element_size = std::mem::size_of::<T>();
+    let elements = bytes / element_size;
+    elements
 }
 
 fn compile_def(def: &Def, def_indices: &HashMap<String, usize>) -> Result<Stack, String> {
