@@ -60,7 +60,7 @@ We apply the following transformations:
 
 1. Intern variable names, replacing strings with indices: `Def(n)` for the nth definition and `Arg(n)` for the nth argument
 2. Convert parameter lists to a simple `arity` count
-3. Flatten nested applications into stacks consisting of `Arg(n)`, `Def(n)` and `App` to apply a function.
+3. Flatten nested applications into stacks consisting of `Def(n)`, `Arg(n)` and `App` to apply a function.
 
 ```rust
 State {
