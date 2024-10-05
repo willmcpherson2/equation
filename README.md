@@ -54,6 +54,8 @@ not x = x false true;
 main = not true;
 ```
 
+### Compilation
+
 We apply the following transformations:
 
 1. Intern variable names, replacing strings with indices: `Def(n)` for the nth definition and `Arg(n)` for the nth argument
@@ -80,6 +82,8 @@ State {
 ```
 
 Because an argument can consist of multiple instructions, we will use `Arg(n)` to index `arg_ranges` to get a `start..end` and then use that to index `args`.
+
+### Evaluation
 
 To evaluate our program, we follow these steps:
 
@@ -153,3 +157,7 @@ stack: []
 args: []
 arg_ranges: []
 ```
+
+### Memory allocation
+
+The evaluation steps don't require any allocations unless space runs out in one of the arrays. With preallocation, some programs won't allocate any memory after startup.
