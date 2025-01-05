@@ -14,8 +14,9 @@ fn main() {
             Err(e) => return eprintln!("Error reading file: {}", e),
         }
     };
-
-    println!("text:\n{}\n", text);
+    if cli.trace_input {
+        println!("input:\n{}\n", text);
+    }
 
     let prog = match parse_program(&text) {
         Ok(prog) => prog,
@@ -24,7 +25,9 @@ fn main() {
             return;
         }
     };
-    println!("parsed:\n{}\n", show_program(&prog));
+    if cli.trace_parse {
+        println!("parsed:\n{}\n", show_program(&prog));
+    }
 
     let state = match compile(&prog) {
         Ok(state) => state,
@@ -33,7 +36,6 @@ fn main() {
             return;
         }
     };
-    println!("eval:");
     let state = eval(state);
     println!("{}", show_stack(&state.names, &state.stack));
 }

@@ -10,4 +10,12 @@ pub struct Cli {
     /// Interpret target as expression rather than file
     #[arg(short, long)]
     pub expression: bool,
+
+    /// Print the input text
+    #[arg(long)]
+    pub trace_input: bool,
+
+    /// Pretty print the parsed program
+    #[arg(long)]
+    pub trace_parse: bool,
 }
