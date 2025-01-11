@@ -1,0 +1,39 @@
+true x y = x;
+false x y = y;
+
+and x y = x y false;
+
+succ n s z = s n;
+zero s z = z;
+
+add a b = b (addS a) a;
+addS a b = succ (add a b);
+
+mul a b = b (mulS a) zero;
+mulS a b = add a (mul a b);
+
+even n = n evenS true;
+evenS n = n even false;
+
+cons x xs c n = c x xs;
+nil c n = n;
+
+map f xs = xs (mapCons f) nil;
+mapCons f x xs = cons (f x) (map f xs);
+
+fold f z xs = xs (foldCons f z) z;
+foldCons f z x xs = fold f (f z x) xs;
+
+all f xs = fold and true (map f xs);
+
+0 = zero;
+1 = succ 0;
+2 = succ 1;
+4 = mul 2 2;
+16 = mul 4 4;
+256 = mul 16 16;
+65536 = mul 256 256;
+
+numbers = cons 0 (cons 2 (cons 4 (cons 16 (cons 256 (cons 65536 nil)))));
+
+main = all even numbers;
