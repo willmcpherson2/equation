@@ -29,13 +29,13 @@ fn main() {
         println!("parsed:\n{}\n", show_program(&prog));
     }
 
-    let state = match compile(&prog) {
+    let mut state = match compile(&prog) {
         Ok(state) => state,
         Err(e) => {
             println!("compile error: {}", e);
             return;
         }
     };
-    let state = eval(state);
+    eval(&mut state);
     println!("{}", show_stack(&state.names, &state.stack));
 }

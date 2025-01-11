@@ -110,14 +110,11 @@ fn compile_term(
     }
 }
 
-pub fn eval(mut state: State) -> State {
-    while let Some(()) = eval_step(&mut state) {}
-    state
+pub fn eval(state: &mut State) {
+    while let Some(()) = eval_step(state) {}
 }
 
 fn eval_step(state: &mut State) -> Option<()> {
-    println!("{}", show_stack(&state.names, &state.stack));
-
     let Some(Op::Def(i)) = state.stack.pop() else {
         return None;
     };
@@ -127,7 +124,10 @@ fn eval_step(state: &mut State) -> Option<()> {
     state.args.clear();
     state.arg_ranges.clear();
     for _ in 0..*arity {
-        get_arg(&mut state.stack, &mut state.args, &mut state.arg_ranges)?;
+        if get_arg(&mut state.stack, &mut state.args, &mut state.arg_ranges).is_none() {
+            restore_stack(Op::Def(i), state);
+            return None;
+        };
     }
 
     for op in body {
@@ -161,6 +161,14 @@ fn get_arg(stack: &mut Stack, args: &mut Stack, arg_ranges: &mut Vec<Range<usize
     arg_ranges.push(arg_start..arg_end);
     let _app = stack.pop();
     Some(())
+}
+
+fn restore_stack(op: Op, state: &mut State) {
+    for arg_range in state.arg_ranges.iter().rev().cloned() {
+        state.stack.push(Op::App);
+        state.stack.extend(&state.args[arg_range]);
+    }
+    state.stack.push(op);
 }
 
 pub fn show_stack(names: &[String], stack: &Stack) -> String {
