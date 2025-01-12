@@ -24,6 +24,9 @@ mapCons f x xs = cons (f x) (map f xs);
 fold f z xs = xs (foldCons f z) z;
 foldCons f z x xs = fold f (f z x) xs;
 
+replicate n x = n (replicateCons x) nil;
+replicateCons x n = cons x (replicate n x);
+
 all f xs = fold and true (map f xs);
 
 0 = zero;
@@ -32,8 +35,8 @@ all f xs = fold and true (map f xs);
 4 = mul 2 2;
 16 = mul 4 4;
 256 = mul 16 16;
-65536 = mul 256 256;
+1024 = mul 256 4;
 
-numbers = cons 0 (cons 2 (cons 4 (cons 16 (cons 256 (cons 65536 nil)))));
+numbers = replicate 1024 1024;
 
 main = all even numbers;
