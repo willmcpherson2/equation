@@ -44,9 +44,9 @@ pub fn compile(prog: &Program) -> Result<State, String> {
         })
         .collect::<Result<Vec<Procedure>, String>>()?;
 
-    let main = prog
-        .iter()
-        .position(|def| def.name == "main")
+    let main = def_indices
+        .get("main")
+        .cloned()
         .ok_or_else(|| "no main function defined".to_string())?;
 
     let mut stack = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
