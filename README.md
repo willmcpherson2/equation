@@ -2,7 +2,7 @@
 
 The equation calculus is a minimalist programming language. It consists only of top-level definitions, applications and variables:
 
-```
+```haskell
 true x y = x;
 false x y = y;
 not x = x false true;
@@ -23,7 +23,7 @@ The upside is that definitions make code much easier to read and write. Definiti
 
 The equation calculus is the combinator calculus but with no predefined combinators.
 
-```
+```haskell
 I x = x;
 K x y = x;
 S f g x = f x (g x);
@@ -34,25 +34,11 @@ main = S K I I;
 
 It's called the equation calculus because it uses Haskell's equation syntax. In fact, our first example was valid Haskell code:
 
-```
-true x y = x;
-false x y = y;
-not x = x false true;
-main = not true;
-```
-
 However, the equation calculus is untyped, so it's not an exact subset of Haskell.
 
 ## Implementation
 
-The equation calculus is very easy to implement efficiently. For example, take this program:
-
-```
-true x y = x;
-false x y = y;
-not x = x false true;
-main = not true;
-```
+The equation calculus is very easy to implement efficiently. For example, let's compile the first example.
 
 ### Compilation
 
