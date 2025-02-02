@@ -60,28 +60,33 @@ We apply the following transformations:
 
 1. Intern variable names, replacing strings with indices: `Def(n)` for the nth definition and `Arg(n)` for the nth argument
 2. Convert parameter lists to a simple `arity` count
-3. Flatten nested applications into stacks consisting of `Def(n)`, `Arg(n)` and `App` to apply a function.
+3. Flatten nested applications into stacks consisting of `Def(n)`, `Arg(n)` and `App(n)` (application of the next `n` elements)
 
 ```rust
 State {
+    names: [
+        "true",
+        "false",
+        "not",
+        "main",
+    ],
     procs: [
         // true x y = x;
         Procedure { arity: 2, body: [Arg(0)] },
         // false x y = y;
         Procedure { arity: 2, body: [Arg(1)] },
         // not x = x false true;
-        Procedure { arity: 1, body: [App, Def(0), App, Def(1), Arg(0)] },
+        Procedure { arity: 1, body: [Def(0), App(1), Def(1), App(1), Arg(0)] },
         // main = not true;
-        Procedure { arity: 0, body: [App, Def(0), Def(2)] },
+        Procedure { arity: 0, body: [Def(0), App(1), Def(2)] },
     ],
-    // main
-    stack: [Def(3)],
-    args: [],
-    arg_ranges: [],
+    stack: [
+        // main
+        Def(3)
+    ],
+    registers: [],
 }
 ```
-
-Because an argument can consist of multiple instructions, we will use `Arg(n)` to index `arg_ranges` to get a `start..end` and then use that to index `args`.
 
 ### Evaluation
 
@@ -89,8 +94,8 @@ To evaluate our program, we follow these steps:
 
 1. Pop a `Def(n)` off the top of the `stack`
 2. Index `procs[n]` to get a `Procedure`
-3. Fill the argument stacks based on the `arity` of the procedure
-4. Copy the `body` of the procedure onto the top of the stack, mapping `Arg(n)` to the corresponding argument
+3. Fill the registers based on the `arity` of the procedure
+4. Copy the `body` of the procedure onto the top of the stack, mapping `Arg(n)` to the corresponding register and recalculating lengths of arguments for `App(n)`
 
 ### Memory allocation
 
@@ -99,10 +104,6 @@ The evaluation steps don't require any allocations unless space runs out in one 
 ### Data locality
 
 We only push/pop the top of stack (end of the array), so this is very cache-friendly.
-
-For the argument stacks, we are indexing the entire array, so it's not as good, but they are still arrays.
-
-Our 3 instructions, `Def(n)`, `Arg(n)` and `App`, can all be stored in 8 bits as long as the indices are less than 256. This would limit the number of top-level definitions to 256 and the number of arguments on a given function to 256. Alternatively, a variable-width encoding could be used, as there aren't any operations that require instructions to be a fixed width.
 
 ### Example
 
@@ -116,67 +117,50 @@ main = not true;
 ```
 
 ```rust
-// stack: main
-stack: [Def(3)]
-args: []
-arg_ranges: []
+State {
+    // main
+    stack: [Def(3)],
+    registers: []
+}
 
-// popped: main
-// definition: main = not true;
-stack: []
-args: []
-arg_ranges: []
+// pop `main` from the stack
+// `main` has 0 arguments, so don't pop anything
+// `main = not true`, so push that to the stack
 
-// arguments: []
-stack: []
-args: []
-arg_ranges: []
+State {
+    // not true
+    stack: [Def(0), App(1), Def(2)],
+    registers: []
+}
 
-// stack: not true
-stack: [App, Def(0), Def(2)]
-args: []
-arg_ranges: []
+// pop `not` from the stack
+// `not` has 1 argument, pop it from the stack to a register
+// `not x = x false true`, so push that to the stack
+// `x` is the first register which is `true`
 
-// popped: not
-// definition: not x = x false true;
-stack: [App, Def(0)]
-args: []
-arg_ranges: []
+State {
+    // true false true
+    stack: [Def(0), App(1), Def(1), App(1), Def(0)],
+    registers: [
+        // true
+        [Def(0)]
+    ]
+}
 
-// arguments: [true]
-stack: []
-args: [Def(0)]
-arg_ranges: [0..1]
+// pop `true` from the stack
+// `true` has 2 arguments, pop them from the stack to registers
+// `true x y = x`, so push that to the stack
+// `x` is the first register which is `false`
+// `y` is the first register which is `true`
 
-// stack: true false true
-stack: [App, Def(0), App, Def(1), Def(0)]
-args: [Def(0)]
-arg_ranges: [0..1]
-
-// popped: true
-// definition: true x y = x;
-stack: [App, Def(0), App, Def(1)]
-args: []
-arg_ranges: []
-
-// arguments: [false, true]
-stack: []
-args: [Def(1), Def(0)]
-arg_ranges: [0..1, 1..2]
-
-// stack: false
-stack: [Def(1)]
-args: [Def(1), Def(0)]
-arg_ranges: [0..1, 1..2]
-
-// popped: false
-// definition: false x y = y;
-stack: []
-args: []
-arg_ranges: []
-
-// could not get arguments. terminating.
-stack: []
-args: []
-arg_ranges: []
+State {
+    // false
+    stack: [Def(1)],
+    registers: [
+        // false
+        [Def(1)],
+        // true
+        [Def(0)]
+    ]
+}
 ```
