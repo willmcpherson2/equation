@@ -37,5 +37,5 @@ fn main() {
         }
     };
     eval(&mut state);
-    println!("{}", show_stack(&state.names, &state.stack));
+    println!("{}", show_stack(&state));
 }

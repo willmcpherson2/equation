@@ -1,14 +1,13 @@
-use std::{collections::HashMap, ops::Range};
+use std::collections::{HashMap, HashSet};
 
-use crate::{show_term, Def, Program, Term};
+use crate::{Def, Program, Term};
 
 #[derive(Debug, Clone)]
 pub struct State {
     pub names: Vec<String>,
     pub procs: Vec<Procedure>,
     pub stack: Stack,
-    pub args: Stack,
-    pub arg_ranges: Vec<Range<usize>>,
+    pub registers: Vec<Stack>,
 }
 
 #[derive(Debug, Clone)]
@@ -21,13 +20,16 @@ pub type Stack = Vec<Op>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Op {
-    App,
     Def(usize),
     Arg(usize),
+    App(usize),
 }
 
 pub fn compile(prog: &Program) -> Result<State, String> {
-    let names = prog.iter().map(|def| def.name.clone()).collect();
+    let names = prog
+        .iter()
+        .map(|def| def.name.clone())
+        .collect::<Vec<String>>();
 
     let def_indices = prog
         .iter()
@@ -52,15 +54,15 @@ pub fn compile(prog: &Program) -> Result<State, String> {
     let mut stack = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
     stack.push(Op::Def(main));
 
-    let args = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
-    let arg_ranges = Vec::with_capacity(bytes_to_capacity::<Range<usize>>(1_000));
+    let registers = (0..8)
+        .map(|_| Vec::with_capacity(bytes_to_capacity::<Op>(1_000)))
+        .collect();
 
     Ok(State {
         names,
         procs,
         stack,
-        args,
-        arg_ranges,
+        registers,
     })
 }
 
@@ -94,7 +96,7 @@ fn compile_term(
             .enumerate()
             .flat_map(|(i, mut stack)| {
                 if i != 0 {
-                    stack.push(Op::App);
+                    stack.insert(0, Op::App(stack.len()));
                 }
                 stack
             })
@@ -115,87 +117,103 @@ pub fn eval(state: &mut State) {
 }
 
 fn eval_step(state: &mut State) -> Option<()> {
-    let Some(Op::Def(i)) = state.stack.pop() else {
+    let State {
+        procs,
+        stack,
+        registers,
+        ..
+    } = state;
+
+    let Op::Def(def) = stack.pop()? else {
         return None;
     };
 
-    let Procedure { arity, body } = &state.procs[i];
+    let Procedure { arity, body } = &procs[def];
 
-    state.args.clear();
-    state.arg_ranges.clear();
-    for _ in 0..*arity {
-        if get_arg(&mut state.stack, &mut state.args, &mut state.arg_ranges).is_none() {
-            restore_stack(Op::Def(i), state);
+    pop_args(def, stack, registers, *arity)?;
+    push_args(stack, registers, body)
+}
+
+fn pop_args(def: usize, stack: &mut Stack, registers: &mut [Stack], arity: usize) -> Option<()> {
+    for register in 0..arity {
+        let Some(Op::App(length)) = stack.pop() else {
+            restore_stack(def, stack, registers, register);
             return None;
         };
-    }
 
-    for op in body {
-        match *op {
-            Op::Arg(i) => {
-                let arg_range = state.arg_ranges[i].clone();
-                let arg = &state.args[arg_range];
-                state.stack.extend_from_slice(arg);
-            }
-            op => state.stack.push(op),
-        }
+        let end = stack.len();
+        let start = end - length;
+
+        registers[register].clear();
+        registers[register].extend_from_slice(&stack[start..end]);
+        stack.truncate(start);
     }
 
     Some(())
 }
 
-fn get_arg(stack: &mut Stack, args: &mut Stack, arg_ranges: &mut Vec<Range<usize>>) -> Option<()> {
-    let mut apps_needed = 0;
-    let arg_length = stack.iter().rev().position(|op| {
+fn push_args(stack: &mut Stack, registers: &[Stack], body: &Stack) -> Option<()> {
+    for (i, op) in body.iter().copied().enumerate() {
         match op {
-            Op::App => apps_needed -= 1,
-            _ => apps_needed += 1,
+            Op::Def(def) => stack.push(Op::Def(def)),
+            Op::Arg(arg) => stack.extend_from_slice(&registers[arg]),
+            Op::App(length) => {
+                let start = i - length;
+                let end = i;
+                let length = get_length(&body[start..end], registers);
+                stack.push(Op::App(length));
+            }
         }
-        apps_needed <= 0
-    })?;
+    }
 
-    let index = stack.len() - arg_length;
-    let arg_start = args.len();
-    let arg_end = arg_start + arg_length;
-    args.extend(stack.drain(index..));
-    arg_ranges.push(arg_start..arg_end);
-    let _app = stack.pop();
     Some(())
 }
 
-fn restore_stack(op: Op, state: &mut State) {
-    for arg_range in state.arg_ranges.iter().rev().cloned() {
-        state.stack.push(Op::App);
-        state.stack.extend(&state.args[arg_range]);
-    }
-    state.stack.push(op);
+fn get_length(body: &[Op], registers: &[Stack]) -> usize {
+    body.iter()
+        .copied()
+        .map(|op| match op {
+            Op::Arg(arg) => registers[arg].len(),
+            _ => 1,
+        })
+        .sum()
 }
 
-pub fn show_stack(names: &[String], stack: &Stack) -> String {
-    show_stack_impl(names, &mut stack.iter().copied().rev())
-        .map(|term| show_term(&term))
-        .unwrap_or("".to_string())
+fn restore_stack(def: usize, stack: &mut Stack, registers: &[Stack], args: usize) {
+    for register in (0..args).rev() {
+        let arg = &registers[register];
+        stack.extend_from_slice(arg);
+        stack.push(Op::App(arg.len()));
+    }
+    stack.push(Op::Def(def));
 }
 
-fn show_stack_impl<I>(names: &[String], stack: &mut I) -> Option<Term>
-where
-    I: Iterator<Item = Op>,
-{
-    let l = show_op(names, stack.next()?)?;
-    let mut terms = vec![l.clone()];
-    while let Some(term) = show_stack_impl(names, stack) {
-        terms.push(term);
-    }
-    if terms.len() == 1 {
-        Some(l)
-    } else {
-        Some(Term::App(terms))
-    }
-}
+pub fn show_stack(state: &State) -> String {
+    let mut string = String::new();
+    let mut close_parens = HashSet::new();
 
-fn show_op(names: &[String], op: Op) -> Option<Term> {
-    match op {
-        Op::App => None,
-        Op::Def(i) | Op::Arg(i) => Some(Term::Var(names[i].clone())),
+    for (i, op) in state.stack.iter().cloned().rev().enumerate() {
+        match op {
+            Op::Def(def) => string.push_str(&state.names[def]),
+            Op::Arg(arg) => {
+                let state = State {
+                    stack: state.registers[arg].clone(),
+                    ..state.clone()
+                };
+                string.push_str(&show_stack(&state));
+            }
+            Op::App(length) => {
+                string.push(' ');
+                if length > 1 {
+                    close_parens.insert(i + length);
+                    string.push('(');
+                }
+            }
+        }
+        if close_parens.remove(&i) {
+            string.push(')');
+        }
     }
+
+    string
 }
