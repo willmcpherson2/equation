@@ -12,8 +12,9 @@ addS a b = succ (add a b);
 mul a b = b (mulS a) zero;
 mulS a b = add a (mul a b);
 
-even n = n evenS true;
-evenS n = n even false;
+even n = n odd true;
+
+odd n = n even false;
 
 cons x xs c n = c x xs;
 nil c n = n;
