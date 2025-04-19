@@ -54,7 +54,8 @@ pub fn compile(prog: &Program) -> Result<State, String> {
     let mut stack = Vec::with_capacity(bytes_to_capacity::<Op>(1_000_000));
     stack.push(Op::Def(main));
 
-    let registers = (0..8)
+    let max_arity = procs.iter().map(|proc| proc.arity).max().unwrap_or(0);
+    let registers = (0..max_arity)
         .map(|_| Vec::with_capacity(bytes_to_capacity::<Op>(1_000)))
         .collect();
 
